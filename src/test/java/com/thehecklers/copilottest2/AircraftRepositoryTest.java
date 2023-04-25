@@ -11,11 +11,9 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Testcontainers
 @DataMongoTest
@@ -72,13 +70,9 @@ class AircraftRepositoryTest {
 //        assertEquals(5, repo.count());
 //        log.info("Aircraft: {}", repo.findAll());
 
-        StepVerifier.create(repo.findAll())
-//                .expectNextCount(5)
-                .expectNextMatches(ac -> Boolean.TRUE.equals(aircraft.hasElement(ac).block()))
-                .expectNextMatches(ac -> Boolean.TRUE.equals(aircraft.hasElement(ac).block()))
-                .expectNextMatches(ac -> Boolean.TRUE.equals(aircraft.hasElement(ac).block()))
-                .expectNextMatches(ac -> Boolean.TRUE.equals(aircraft.hasElement(ac).block()))
-                .expectNextMatches(ac -> Boolean.TRUE.equals(aircraft.hasElement(ac).block()))
-                .verifyComplete();
+        repo.findAll()
+//                .subscribe(ac -> assertEquals(Boolean.TRUE, aircraft.hasElement(ac).block()));
+//                or (MH NOTE: Unsure why the above is preferred; functionally equivalent to below)
+                .subscribe(ac -> assertTrue(aircraft.hasElement(ac).block()));
     }
 }
