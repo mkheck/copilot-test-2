@@ -3,7 +3,6 @@ package com.thehecklers.copilottest2;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-//import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.data.mongo.DataMongoTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -11,17 +10,20 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.util.List;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 @Testcontainers
 @DataMongoTest
 class AircraftRepositoryTest {
 //    private final Logger log = org.slf4j.LoggerFactory.getLogger(AircraftRepositoryTest.class);
 
-    private final Iterable<Aircraft> aircraft = List.of(new Aircraft("12345a", "12345", "PA28"),
+    //    private final Iterable<Aircraft> aircraft = List.of(new Aircraft("12345a", "12345", "PA28"),
+    private final Flux<Aircraft> aircraft = Flux.just(new Aircraft("12345a", "12345", "PA28"),
             new Aircraft("23456b", "23456", "PA32"),
             new Aircraft("34567c", "34567", "PA46"),
             new Aircraft("45678d", "45678", "C172"),
@@ -41,30 +43,42 @@ class AircraftRepositoryTest {
     // Before each test, save all aircraft
     @BeforeEach
     void setUpBeforeEach() {
-        repo.saveAll(aircraft);
+        repo.saveAll(aircraft).subscribe(); //(ac -> System.out.println("Saved: " + ac));
     }
 
     // After each test, delete all aircraft
     @AfterEach
     void cleanUp() {
-        repo.deleteAll();
+        repo.deleteAll().subscribe();
     }
 
     @Test
     void testAddAircraft() {
         var cirrus = new Aircraft("67890f", "67890", "SR22");
-        assertEquals(cirrus, repo.save(new Aircraft("67890f", "67890", "SR22")));
+        assertEquals(cirrus, repo.save(new Aircraft("67890f", "67890", "SR22")).block());
     }
 
     @Test
     void testGetAircraftByAdshex() {
-        assertEquals("PA28", repo.findById("12345a").get().type());
+//        assertEquals("PA28",
+//                repo.saveAll(aircraft).then(repo.findById("12345a")).block().type());
+
+        repo.findById("12345a")
+                .subscribe(ac -> assertEquals("PA28", ac.type()));
     }
 
     @Test
     void testGetAllAircraft() {
 //        assertEquals(5, repo.count());
 //        log.info("Aircraft: {}", repo.findAll());
-        assertEquals(aircraft, repo.findAll());
+
+        StepVerifier.create(repo.findAll())
+//                .expectNextCount(5)
+                .expectNextMatches(ac -> Boolean.TRUE.equals(aircraft.hasElement(ac).block()))
+                .expectNextMatches(ac -> Boolean.TRUE.equals(aircraft.hasElement(ac).block()))
+                .expectNextMatches(ac -> Boolean.TRUE.equals(aircraft.hasElement(ac).block()))
+                .expectNextMatches(ac -> Boolean.TRUE.equals(aircraft.hasElement(ac).block()))
+                .expectNextMatches(ac -> Boolean.TRUE.equals(aircraft.hasElement(ac).block()))
+                .verifyComplete();
     }
 }

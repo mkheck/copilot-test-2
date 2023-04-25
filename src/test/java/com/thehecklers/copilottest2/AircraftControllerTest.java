@@ -1,33 +1,24 @@
 package com.thehecklers.copilottest2;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.hamcrest.Matchers;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-//import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-//import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
-//import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import org.springframework.test.web.reactive.server.WebTestClient;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-import java.util.List;
-import java.util.Optional;
-
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
-@WebMvcTest(AircraftController.class)
+@WebFluxTest(AircraftController.class)
+//@WebMvcTest(AircraftController.class)
 class AircraftControllerTest {
     private final Logger logger = org.slf4j.LoggerFactory.getLogger(AircraftControllerTest.class);
 
     private final Aircraft ac1 = new Aircraft("12345a", "12345", "PA28");
-    private final Iterable<Aircraft> aircraft = List.of(ac1,
+//    private final Iterable<Aircraft> aircraft = List.of(ac1,
+    private final Flux<Aircraft> aircraft = Flux.just(ac1,
             new Aircraft("23456b", "23456", "PA32"),
             new Aircraft("34567c", "34567", "PA46"),
             new Aircraft("45678d", "45678", "C172"),
@@ -38,7 +29,8 @@ class AircraftControllerTest {
     private AircraftRepository repo;
 
     @Autowired
-    private MockMvc mockMvc;
+//    private MockMvc mockMvc;
+    private WebTestClient webclient;
 
 //    @BeforeEach
 //    void setUp() {
@@ -49,14 +41,21 @@ class AircraftControllerTest {
         Mockito.when(repo.findAll()).thenReturn(aircraft);
 
         try {
-            mockMvc.perform(get("/aircraft"))
-                    .andExpect(status().isOk())
-                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                    .andExpect(jsonPath("$", Matchers.hasSize(5)))
-                    .andExpect(jsonPath("$[0].adshex", Matchers.is("12345a")))
-                    .andExpect(jsonPath("$[0].reg", Matchers.is("12345")))
-                    .andExpect(jsonPath("$[0].type", Matchers.is("PA28")))
-                    .andDo(print());
+            webclient.get().uri("/aircraft")
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBodyList(Aircraft.class)
+                    .hasSize(5)
+                    .contains(ac1);
+
+//            mockMvc.perform(get("/aircraft"))
+//                    .andExpect(status().isOk())
+//                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+//                    .andExpect(jsonPath("$", Matchers.hasSize(5)))
+//                    .andExpect(jsonPath("$[0].adshex", Matchers.is("12345a")))
+//                    .andExpect(jsonPath("$[0].reg", Matchers.is("12345")))
+//                    .andExpect(jsonPath("$[0].type", Matchers.is("PA28")))
+//                    .andDo(print());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -64,16 +63,22 @@ class AircraftControllerTest {
 
     @Test
     void getAircraftByAdshex() {
-        Mockito.when(repo.findById("12345a")).thenReturn(Optional.of(ac1));
+        Mockito.when(repo.findById("12345a")).thenReturn(Mono.just(ac1));
+//        Mockito.when(repo.findById("12345a")).thenReturn(Optional.of(ac1));
 
         try {
-            mockMvc.perform(get("/aircraft/12345a"))
-                    .andExpect(status().isOk())
-                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                    .andExpect(jsonPath("$.adshex", Matchers.is("12345a")))
-                    .andExpect(jsonPath("$.reg", Matchers.is("12345")))
-                    .andExpect(jsonPath("$.type", Matchers.is("PA28")))
-                    .andDo(print());
+            webclient.get().uri("/aircraft/12345a")
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody(Aircraft.class)
+                    .isEqualTo(ac1);
+//            mockMvc.perform(get("/aircraft/12345a"))
+//                    .andExpect(status().isOk())
+//                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+//                    .andExpect(jsonPath("$.adshex", Matchers.is("12345a")))
+//                    .andExpect(jsonPath("$.reg", Matchers.is("12345")))
+//                    .andExpect(jsonPath("$.type", Matchers.is("PA28")))
+//                    .andDo(print());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -81,19 +86,27 @@ class AircraftControllerTest {
 
     @Test
     void addAircraft() {
-        Mockito.when(repo.save(newAc)).thenReturn(newAc);
+        Mockito.when(repo.save(newAc)).thenReturn(Mono.just(newAc));
+//        Mockito.when(repo.save(newAc)).thenReturn(newAc);
 
         try {
-            mockMvc.perform(post("/aircraft")
+            webclient.post().uri("/aircraft")
                     .contentType(MediaType.APPLICATION_JSON)
-//                    .content("{\"adshex\":\"67890f\",\"reg\":\"67890\",\"type\":\"SR22\"}"))
-                    .content(new ObjectMapper().writeValueAsString(newAc)))
-                    .andExpect(status().isOk())
-                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                    .andExpect(jsonPath("$.adshex", Matchers.is("67890f")))
-                    .andExpect(jsonPath("$.reg", Matchers.is("67890")))
-                    .andExpect(jsonPath("$.type", Matchers.is("SR22")))
-                    .andDo(print());
+                    .body(Mono.just(newAc), Aircraft.class)
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody(Aircraft.class)
+                    .isEqualTo(newAc);
+//            mockMvc.perform(post("/aircraft")
+//                    .contentType(MediaType.APPLICATION_JSON)
+////                    .content("{\"adshex\":\"67890f\",\"reg\":\"67890\",\"type\":\"SR22\"}"))
+//                    .content(new ObjectMapper().writeValueAsString(newAc)))
+//                    .andExpect(status().isOk())
+//                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+//                    .andExpect(jsonPath("$.adshex", Matchers.is("67890f")))
+//                    .andExpect(jsonPath("$.reg", Matchers.is("67890")))
+//                    .andExpect(jsonPath("$.type", Matchers.is("SR22")))
+//                    .andDo(print());
         } catch (Exception e) {
             e.printStackTrace();
         }
